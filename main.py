@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 # Get these values from my.telegram.org
 # DO NOT share them with anyone!
 # It's best to set these as environment variables for security.
-API_ID = os.environ.get('TELEGRAM_API_ID')
-API_HASH = os.environ.get('TELEGRAM_API_HASH')
+API_ID = os.environ.get('21502134')
+API_HASH = os.environ.get('e09a3f453b841ca4d1823d3b4004672d')
 SESSION_NAME = "my_userbot"
 
 # Fallback to asking user if environment variables aren't set
