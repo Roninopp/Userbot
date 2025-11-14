@@ -6,7 +6,7 @@ import time
 # --- Config ---
 ECHO_TARGET_FILE = "echo_target.json"
 # Cooldown in seconds to prevent flood bans
-ECHO_COOLDOWN = 3 
+ECHO_COOLDOWN = 2 
 
 # This variable will hold the last time an echo was sent
 last_echo_time = 0
