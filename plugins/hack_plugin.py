@@ -68,7 +68,7 @@ async def hack_animation(event):
 
         # Final message after the loop
         await asyncio.sleep(2)
-        await event.edit(f"✅ **Target `{target_name}` has been successfully hacked.**\n(This is a joke, obviously)")
+        await event.edit(f"✅ **Target `{target_name}` has been successfully hacked.**\n(Found User Adress And Mail Failed To Generate Contact Number)")
 
     except Exception as e:
         # Failsafe in case something goes wrong
