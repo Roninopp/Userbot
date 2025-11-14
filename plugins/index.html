@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Funny .banall Simulator</title>
+    <!-- Load Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Use the Inter font family -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles for the app */
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Custom scrollbar for the member list */
+        .member-list-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .member-list-scrollbar::-webkit-scrollbar-track {
+            background: #2f3136;
+        }
+        .member-list-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #202225;
+            border-radius: 20px;
+        }
+
+        /* This is the class that holds the member item styles and transitions */
+        .member-item {
+            /* Smooth transitions for all properties */
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-300 h-full overflow-hidden">
+
+    <!-- Main application container, modeled like a simple chat app -->
+    <div class="flex h-full w-full">
+
+        <!-- Sidebar: Member List -->
+        <aside class="w-64 flex-shrink-0 bg-gray-800 flex flex-col">
+            <div class="p-4 shadow-md text-white font-semibold">
+                Funny Chat
+            </div>
+            <div class="p-4 text-xs font-semibold tracking-wide text-gray-400 uppercase">
+                Members — <span id="member-count">0</span>
+            </div>
+            <!-- Member list container -->
+            <div id="member-list" class="flex-1 overflow-y-auto member-list-scrollbar px-2 space-y-1">
+                <!-- Member items will be dynamically injected here by JavaScript -->
+            </div>
+            <div class="p-4 bg-gray-850">
+                <!-- A fun, fake user panel -->
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-white">
+                        U
+                    </div>
+                    <div>
+                        <div class="font-semibold text-white">You</div>
+                        <div class="text-xs text-gray-400">#1337</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content: Chat Window and Input -->
+        <main class="flex-1 flex flex-col bg-gray-700">
+            <!-- "Chat" window - this is where messages will appear -->
+            <div id="message-area" class="flex-1 flex flex-col items-center justify-center p-8">
+                <!-- Initial message -->
+            </div>
+
+            <!-- Command Input Box -->
+            <div class="p-4 bg-gray-700 border-t border-gray-800">
+                <div class="bg-gray-600 rounded-lg p-2 flex">
+                    <input type="text" id="command-input" 
+                           class="flex-1 bg-transparent text-gray-200 placeholder-gray-400 focus:outline-none px-2"
+                           placeholder="Try typing .banall and press Enter...">
+                </div>
+            </div>
+        </main>
+
+    </div>
+
+    <script>
+        // List of funny member names
+        const funnyMembers = [
+            'Sir_LagsALot',
+            'CtrlAltDefeat',
+            'Karen_From_Acctg',
+            'Not_A_Bot_Honest',
+            'Sofa_King_Cool',
+            'Error404_NameFound',
+            'Geoff',
+            'MemeLordSupreme',
+            'TheForbiddenSnack',
+            'PixelPirate',
+            'SassySasquatch',
+            'Procrasti-Not',
+            'ChaoticNeutral',
+            'JustVibin',
+            'AnonymousGoose'
+        ];
+
+        // Get references to DOM elements
+        const memberListEl = document.getElementById('member-list');
+        const messageAreaEl = document.getElementById('message-area');
+        const commandInputEl = document.getElementById('command-input');
+        const memberCountEl = document.getElementById('member-count');
+
+        // Utility function to create a delay
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Function to initialize or reset the member list
+        function initialize() {
+            // Clear existing members
+            memberListEl.innerHTML = '';
+            
+            // Set initial message
+            messageAreaEl.innerHTML = `
+                <div class="text-center">
+                    <div class="text-5xl mb-4">🤣</div>
+                    <h2 class="text-2xl font-semibold text-white">.banall Simulator</h2>
+                    <p class="text-gray-400">The members are getting rowdy!</p>
+                    <p class="text-gray-400 mt-2">Type <code class="bg-gray-800 text-white px-2 py-1 rounded-md">.banall</code> in the box below and press Enter.</p>
+                </div>
+            `;
+            
+            // Enable and clear input
+            commandInputEl.disabled = false;
+            commandInputEl.value = '';
+            commandInputEl.focus();
+            
+            // Update member count
+            memberCountEl.innerText = funnyMembers.length;
+
+            // Create and append each member to the list
+            funnyMembers.forEach((name, index) => {
+                const memberDiv = document.createElement('div');
+                // We add the 'member-item' class here for styling and transitions
+                memberDiv.className = 'member-item p-2 rounded-lg hover:bg-gray-600 cursor-pointer text-gray-300';
+                memberDiv.id = `member-${index}`;
+                memberDiv.innerText = name;
+                memberListEl.appendChild(memberDiv);
+            });
+        }
+
+        // The main function to run the "banning" sequence
+        async function runBanSequence() {
+            // Show a message in the "chat"
+            messageAreaEl.innerHTML = `
+                <div class="text-center">
+                    <div class="text-3xl text-red-400 font-bold animate-pulse">!!! BANHAMMER INITIATED !!!</div>
+                    <p class="text-gray-400 mt-2">Removing all members...</p>
+                </div>
+            `;
+            
+            // Get all the member items currently in the list
+            const memberElements = memberListEl.querySelectorAll('.member-item');
+            let count = memberElements.length;
+
+            // Iterate through the members one by one
+            for (const memberEl of memberElements) {
+                // 1. Apply the "banned" styles (red, line-through)
+                memberEl.classList.add('text-red-500', 'line-through', 'scale-95');
+                
+                // Update count
+                count--;
+                memberCountEl.innerText = count;
+
+                // Wait a very short time
+                await delay(100); 
+
+                // 2. Apply the "fade out and slide" animation
+                memberEl.classList.add('opacity-0', '-translate-x-full');
+                
+                // Wait for the animation to finish before moving to the next member
+                await delay(150);
+            }
+
+            // All members are "banned", show the final message
+            messageAreaEl.innerHTML = `
+                <div class="text-center">
+                    <div class="text-5xl mb-4">🤫</div>
+                    <h2 class="text-2xl font-semibold text-green-400">The-The-The... That's all folks!</h2>
+                    <p class="text-gray-400">The room is now empty. Nice and quiet.</p>
+                    <button id="reset-btn" class="mt-4 bg-indigo-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-indigo-600 transition-colors">
+                        Repopulate Members
+                    </button>
+                </div>
+            `;
+
+            // Add a click listener to the new "Reset" button
+            document.getElementById('reset-btn').addEventListener('click', initialize);
+        }
+
+        // Add the event listener for the command input
+        commandInputEl.addEventListener('keydown', async (event) => {
+            // Check if the key pressed is "Enter" and the value is correct
+            if (event.key === 'Enter' && event.target.value.trim().toLowerCase() === '.banall') {
+                // Disable the input to prevent more commands
+                event.target.disabled = true;
+                event.target.value = ''; // Clear the input
+                
+                // Run the sequence
+                await runBanSequence();
+                
+                // We don't re-enable the input here,
+                // because the "Reset" button will call initialize() which does it.
+            }
+        });
+
+        // Initial load
+        initialize();
+    </script>
+</body>
+</html>
