@@ -7,8 +7,7 @@ import asyncio
 # --- Config ---
 # This is the file where your original profile will be backed up
 BACKUP_FILE = "profile_backup.json"
-# Temporary file names for photo downloads
-CLONED_PHOTO_FILE = "cloned_dp.jpg"
+# Temporary file name for YOUR photo backup
 ORIGINAL_PHOTO_FILE = "original_dp.jpg"
 
 # --- Clone Command ---
@@ -20,6 +19,8 @@ async def clone_profile(event):
     if not reply_msg:
         await event.edit("`Reply to a user's message to clone them.`")
         return
+
+    cloned_photo_path = None # Initialize variable
 
     try:
         await event.edit("`Cloning... Step 1/3: Backing up current profile...`")
@@ -49,18 +50,27 @@ async def clone_profile(event):
         await event.edit("`Cloning... Step 2/3: Applying new profile...`")
 
         # 4. Download the target's profile photo
-        # We only download the first (current) photo
+        #    We let Telethon name the file so we can check its extension
         cloned_photo_path = await event.client.download_profile_photo(
             target_user, 
-            file=CLONED_PHOTO_FILE, 
-            download_big=True # Get the best quality
+            download_big=True 
         )
         
-        # 5. Update our profile picture (if they have one)
+        # 5. Update our profile picture (if they have one AND it's an image)
         if cloned_photo_path:
-            uploaded_file = await event.client.upload_file(cloned_photo_path)
-            await event.client(functions.photos.UploadProfilePhotoRequest(uploaded_file))
-            os.remove(cloned_photo_path) # Clean up the downloaded file
+            # --- THIS IS THE NEW, FIXED LOGIC ---
+            if cloned_photo_path.endswith((".jpg", ".jpeg", ".png")):
+                # It's a static photo, safe to upload
+                uploaded_file = await event.client.upload_file(cloned_photo_path)
+                await event.client(functions.photos.UploadProfilePhotoRequest(uploaded_file))
+            else:
+                # It's a video or something else, skip it
+                await event.edit("`Target has a video DP. Skipping photo clone.`")
+                await asyncio.sleep(1.5) # Give time to read the message
+            
+            # Clean up the downloaded file, whatever it was
+            os.remove(cloned_photo_path)
+            # --- END OF FIX ---
 
         # 6. Update our name and bio
         target_bio = target_full.full_user.about or ""
@@ -75,8 +85,8 @@ async def clone_profile(event):
     except Exception as e:
         await event.edit(f"**Clone Error:**\n`{e}`")
         # Clean up temp files on error
-        if os.path.exists(CLONED_PHOTO_FILE):
-            os.remove(CLONED_PHOTO_FILE)
+        if cloned_photo_path and os.path.exists(cloned_photo_path):
+            os.remove(cloned_photo_path)
 
 
 # --- Revert Command ---
