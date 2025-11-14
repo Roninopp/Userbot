@@ -12,7 +12,10 @@ async def get_target_display_name(event):
         return target_text # e.g., "@username" or "the server"
 
     # Check if replying to a message
-    reply_msg = await event.get_reply_to_message()
+    # --- THIS IS THE FIXED LINE ---
+    reply_msg = await event.get_reply_message()
+    # --- END OF FIX ---
+    
     if reply_msg:
         try:
             # Get the user who sent the message
