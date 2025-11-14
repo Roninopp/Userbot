@@ -27,7 +27,10 @@ async def add_echo(event):
         
         # Save the target's ID to our file
         with open(ECHO_TARGET_FILE, "w", encoding="utf-8") as f:
-            json.dump({"target_id": target_id})
+            # --- THIS IS THE FIXED LINE ---
+            # I added the file pointer 'f' as the second argument
+            json.dump({"target_id": target_id}, f)
+            # --- END OF FIX ---
             
         await event.edit(f"`Successfully started echoing:` **{target_user.first_name}**")
 
