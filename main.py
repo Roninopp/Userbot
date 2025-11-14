@@ -1,6 +1,7 @@
 import os
 import importlib
 import logging
+import sys  # <-- We've added this import
 from telethon import TelegramClient, events
 
 # Set up basic logging
@@ -8,15 +9,10 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 # --- CONFIGURATION ---
-# !! IMPORTANT !!
-# Get these values from my.telegram.org
-# DO NOT share them with anyone!
-# It's best to set these as environment variables for security.
-API_ID = os.environ.get('21502134')
-API_HASH = os.environ.get('e09a3f453b841ca4d1823d3b4004672d')
+API_ID = os.environ.get('TELEGRAM_API_ID')
+API_HASH = os.environ.get('TELEGRAM_API_HASH')
 SESSION_NAME = "my_userbot"
 
-# Fallback to asking user if environment variables aren't set
 if not API_ID:
     API_ID = input("Please enter your API ID: ")
 if not API_HASH:
@@ -25,6 +21,11 @@ if not API_HASH:
 # This dictionary will hold help messages for loaded plugins
 PLUGINS = {}
 PLUGIN_PATH = "plugins"
+
+# --- NEW PLUGIN LOADER ---
+# Add the plugin path to the system path so importlib can find it
+# This is the main change
+sys.path.append(os.path.abspath(PLUGIN_PATH))
 
 def load_plugins():
     """Finds, imports, and registers all plugins in the 'plugins' directory."""
@@ -40,10 +41,8 @@ def load_plugins():
         if f.endswith(".py") and f != "__init__.py":
             plugin_name = f[:-3]  # Remove '.py'
             try:
-                # Import the module
-                spec = importlib.util.spec_from_file_location(plugin_name, os.path.join(PLUGIN_PATH, f))
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
+                # We now use import_module, which is a different method
+                module = importlib.import_module(plugin_name)
                 
                 # Check for the 'register' function and call it
                 if hasattr(module, 'register'):
@@ -52,7 +51,9 @@ def load_plugins():
                 else:
                     logger.warning(f"Plugin {plugin_name} has no 'register' function.")
             except Exception as e:
-                logger.error(f"Failed to load plugin {plugin_name}: {e}")
+                # Log the full traceback for better debugging
+                logger.error(f"Failed to load plugin {plugin_name}:", exc_info=True)
+# --- END OF NEW LOADER ---
 
 # Initialize the client
 client = TelegramClient(SESSION_NAME, int(API_ID), API_HASH)
