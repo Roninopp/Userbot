@@ -1,99 +1,97 @@
-from telethon import events
+from telethon import events, Button, functions
+from telethon.tl.custom import Button as CustomButton
 import asyncio
 
-# ==========================================
-# 1. .button - The Link Button Creator
-# ==========================================
-@events.register(events.NewMessage(pattern=r"\.button", outgoing=True))
-async def link_button(event):
-    """Creates a clickable markdown link that looks like a button."""
-    # Get the text after the command
-    raw_text = event.text.split(" ", 1)
-    
-    if len(raw_text) < 2:
-        await event.edit("❌ **Usage:** `.button Name | Link | Text`")
+# ==============================================================================
+# ⚠️ CONFIGURATION - YOU MUST FILL THIS FOR BUTTONS TO WORK
+# ==============================================================================
+# 1. Go to @BotFather, create a bot, and get the token.
+# 2. Paste the token inside the quotes below.
+BOT_TOKEN = "8405972806:AAHx_Wlpf3SKt6mIypp_1pU7uG8lS_2M4nk" 
+# ==============================================================================
+
+# We need a separate client for the bot to handle the buttons
+try:
+    from telethon import TelegramClient
+    # We use a unique session name for the helper bot
+    bot_client = TelegramClient('helper_bot_session', 6, 'eb06d4abfb49dc3eeb1aeb98ae0f581e')
+    bot_client.start(bot_token=BOT_TOKEN)
+except Exception as e:
+    print(f"❌ HELPER BOT ERROR: Could not start. Did you put the token? {e}")
+    bot_client = None
+
+# 1. The Command to Trigger the Button
+# Usage: .realbtn Text | Link | Button Name
+@events.register(events.NewMessage(pattern=r"\.realbtn", outgoing=True))
+async def real_button_command(event):
+    if bot_client is None:
+        await event.edit("❌ **Error:** You didn't add the `BOT_TOKEN` in the plugin file!")
         return
 
-    # Split by the "|" symbol
-    args = raw_text[1].split("|")
-    
+    # Parse inputs
+    args = event.text.split(" ", 1)
     if len(args) < 2:
-         await event.edit("❌ **Error:** Separator `|` missing.\nUsage: `.button Google | https://google.com | Click Here`")
-         return
-
-    # Extract parts
-    btn_name = args[0].strip()
-    btn_link = args[1].strip()
-    # If there is a 3rd part (Text), use it. Otherwise use a default.
-    msg_text = args[2].strip() if len(args) > 2 else "Click the link below:"
-
-    # Create the Markdown Link
-    markdown_link = f"**{msg_text}**\n\n[ 🔗 {btn_name} ]({btn_link})"
-    
-    await event.edit(markdown_link, link_preview=False)
-
-# ==========================================
-# 2. .google - Let Me Google That For You
-# ==========================================
-@events.register(events.NewMessage(pattern=r"\.google", outgoing=True))
-async def lmgtfy(event):
-    """Creates a 'Let Me Google That For You' link."""
-    input_str = event.text.split(" ", 1)
-    
-    if len(input_str) < 2:
-        await event.edit("❌ **Usage:** `.google <search query>`")
+        await event.edit("❌ Usage: `.realbtn Text | Link | Button Name`")
         return
 
-    query = input_str[1]
-    search_url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
-    
-    await event.edit(f"Here is what I found for **'{query}'**:\n\n[🔎 Search on Google]({search_url})")
-
-# ==========================================
-# 3. .calc - Quick Calculator
-# ==========================================
-@events.register(events.NewMessage(pattern=r"\.calc", outgoing=True))
-async def calculator(event):
-    """Basic calculator for math expressions."""
-    input_str = event.text.split(" ", 1)
-    
-    if len(input_str) < 2:
-        await event.edit("❌ **Usage:** `.calc <math problem>`")
+    parts = args[1].split("|")
+    if len(parts) != 3:
+        await event.edit("❌ Format: `.realbtn Message Text | https://link.com | Button Label`")
         return
 
-    expression = input_str[1]
+    msg_text = parts[0].strip()
+    link_url = parts[1].strip()
+    btn_label = parts[2].strip()
+
+    # Get the bot's username
+    bot_me = await bot_client.get_me()
+    bot_username = bot_me.username
+
+    # Delete the user's command
+    await event.delete()
+
+    # Use Inline Query to ask the Helper Bot to send the button
+    # We construct a query: "button|Text|Link|Label"
+    query_text = f"button|{msg_text}|{link_url}|{btn_label}"
     
     try:
-        # 'eval' whitelist to prevent code injection
-        allowed_chars = "0123456789+-*/.() "
-        if any(char not in allowed_chars for char in expression):
-             await event.edit("❌ **Error:** Invalid characters. Only use numbers and + - * /")
-             return
-             
-        # Calculate
-        result = eval(expression)
-        
-        await event.edit(f"🧮 **Calculator**\n\n`{expression}`\n**= {result}**")
-        
+        results = await event.client.inline_query(bot_username, query_text)
+        await results[0].click(event.chat_id)
     except Exception as e:
-        await event.edit(f"❌ **Math Error:** {e}")
+        await event.respond(f"❌ Failed to send button. Make sure @{bot_username} is started and has Inline Mode enabled in BotFather.\nError: {e}")
 
 
-# ==========================================
-# REGISTER FUNCTION (REQUIRED FOR YOUR BOT)
-# ==========================================
+# 2. The Bot Logic (Handles the Inline Query)
+@bot_client.on(events.InlineQuery)
+async def inline_handler(event):
+    builder = event.builder
+    query = event.text
+    
+    # Check if the query is for our button command
+    if query.startswith("button|"):
+        try:
+            _, text, url, label = query.split("|")
+            
+            # Create the result with the button
+            result = builder.article(
+                title="Send Button",
+                text=text,
+                buttons=[[Button.url(label, url)]]
+            )
+            await event.answer([result])
+        except Exception:
+            pass # Ignore malformed queries
+
+# Registration (Standard for your bot)
 def register(client, help_dict):
-    """Registers the plugin's handlers and help message."""
+    client.add_event_handler(real_button_command)
     
-    # Add our event handlers
-    client.add_event_handler(link_button)
-    client.add_event_handler(lmgtfy)
-    client.add_event_handler(calculator)
-    
-    # Add help info
-    help_dict['Useful Tools'] = (
-        "**Useful Tools Plugin**\n"
-        "`.button Name | Link | Text` - Create a fake button link.\n"
-        "`.google <text>` - Send a Google Search link.\n"
-        "`.calc <math>` - Simple calculator (e.g., `.calc 5*5`)."
+    # We also need to run the bot client in the background
+    if bot_client:
+        client.loop.create_task(bot_client.run_until_disconnected())
+
+    help_dict['Real Button'] = (
+        "**.realbtn <text> | <link> | <label>**\n"
+        "Sends a message with a REAL Inline Keyboard button.\n"
+        "⚠️ Requires `BOT_TOKEN` to be set in the plugin file."
     )
