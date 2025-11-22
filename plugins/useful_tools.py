@@ -1,23 +1,12 @@
-import asyncio
 from telethon import events
-
-# --- IMPORT HANDLING ---
-# We try to match your bot's variable name (borg, bot, or client)
-try:
-    from userbot import bot as client
-except ImportError:
-    try:
-        from userbot import borg as client
-    except ImportError:
-        from userbot import client
+import asyncio
 
 # ==========================================
 # 1. .button - The Link Button Creator
 # ==========================================
-# USAGE: .button ButtonName | https://link.com | Your Message Text
-# The '|' symbol is used to separate the parts so you can use spaces in the name!
-@client.on(events.NewMessage(pattern=r"\.button", outgoing=True))
+@events.register(events.NewMessage(pattern=r"\.button", outgoing=True))
 async def link_button(event):
+    """Creates a clickable markdown link that looks like a button."""
     # Get the text after the command
     raw_text = event.text.split(" ", 1)
     
@@ -29,7 +18,7 @@ async def link_button(event):
     args = raw_text[1].split("|")
     
     if len(args) < 2:
-         await event.edit("❌ **Error:** You need to separate Name and Link with a `|` symbol.\nExample: `.button Google | https://google.com | Search here!`")
+         await event.edit("❌ **Error:** Separator `|` missing.\nUsage: `.button Google | https://google.com | Click Here`")
          return
 
     # Extract parts
@@ -39,7 +28,6 @@ async def link_button(event):
     msg_text = args[2].strip() if len(args) > 2 else "Click the link below:"
 
     # Create the Markdown Link
-    # Format: [ Button Name ](Link)
     markdown_link = f"**{msg_text}**\n\n[ 🔗 {btn_name} ]({btn_link})"
     
     await event.edit(markdown_link, link_preview=False)
@@ -47,9 +35,9 @@ async def link_button(event):
 # ==========================================
 # 2. .google - Let Me Google That For You
 # ==========================================
-# USAGE: .google best pizza recipe
-@client.on(events.NewMessage(pattern=r"\.google", outgoing=True))
+@events.register(events.NewMessage(pattern=r"\.google", outgoing=True))
 async def lmgtfy(event):
+    """Creates a 'Let Me Google That For You' link."""
     input_str = event.text.split(" ", 1)
     
     if len(input_str) < 2:
@@ -57,7 +45,6 @@ async def lmgtfy(event):
         return
 
     query = input_str[1]
-    # Replace spaces with + for the URL
     search_url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
     
     await event.edit(f"Here is what I found for **'{query}'**:\n\n[🔎 Search on Google]({search_url})")
@@ -65,9 +52,9 @@ async def lmgtfy(event):
 # ==========================================
 # 3. .calc - Quick Calculator
 # ==========================================
-# USAGE: .calc 50 * 12
-@client.on(events.NewMessage(pattern=r"\.calc", outgoing=True))
+@events.register(events.NewMessage(pattern=r"\.calc", outgoing=True))
 async def calculator(event):
+    """Basic calculator for math expressions."""
     input_str = event.text.split(" ", 1)
     
     if len(input_str) < 2:
@@ -77,7 +64,7 @@ async def calculator(event):
     expression = input_str[1]
     
     try:
-        # 'eval' can be dangerous, so we whitelist only math characters
+        # 'eval' whitelist to prevent code injection
         allowed_chars = "0123456789+-*/.() "
         if any(char not in allowed_chars for char in expression):
              await event.edit("❌ **Error:** Invalid characters. Only use numbers and + - * /")
@@ -90,3 +77,23 @@ async def calculator(event):
         
     except Exception as e:
         await event.edit(f"❌ **Math Error:** {e}")
+
+
+# ==========================================
+# REGISTER FUNCTION (REQUIRED FOR YOUR BOT)
+# ==========================================
+def register(client, help_dict):
+    """Registers the plugin's handlers and help message."""
+    
+    # Add our event handlers
+    client.add_event_handler(link_button)
+    client.add_event_handler(lmgtfy)
+    client.add_event_handler(calculator)
+    
+    # Add help info
+    help_dict['Useful Tools'] = (
+        "**Useful Tools Plugin**\n"
+        "`.button Name | Link | Text` - Create a fake button link.\n"
+        "`.google <text>` - Send a Google Search link.\n"
+        "`.calc <math>` - Simple calculator (e.g., `.calc 5*5`)."
+    )
