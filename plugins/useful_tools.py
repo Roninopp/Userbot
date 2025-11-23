@@ -7,7 +7,7 @@ from telethon import TelegramClient
 # ==============================================================================
 # ⚠️ CONFIGURATION
 # ==============================================================================
-HELPER_BOT_TOKEN = "PASTE_YOUR_BOT_TOKEN_HERE"
+HELPER_BOT_TOKEN = "8405972806:AAHx_Wlpf3SKt6mIypp_1pU7uG8lS_2M4nk"
 # ==============================================================================
 
 # Initialize Helper Bot
