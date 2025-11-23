@@ -1,43 +1,50 @@
 import asyncio
+import random
+import string
 from telethon import events, functions, Button
 from telethon import TelegramClient
 
 # ==============================================================================
 # ⚠️ CONFIGURATION
 # ==============================================================================
-# Paste your Bot Token inside the quotes below:
-HELPER_BOT_TOKEN = "8341511264:AAFjNIOYE5NbABPloFbz-r989l2ySRUs988"
+HELPER_BOT_TOKEN = "PASTE_YOUR_BOT_TOKEN_HERE"
 # ==============================================================================
 
 # Initialize Helper Bot
 try:
-    # Changed session name slightly to ensure fresh start
-    bot_client = TelegramClient('my_helper_bot_v2', 6, 'eb06d4abfb49dc3eeb1aeb98ae0f581e')
+    bot_client = TelegramClient('helper_bot_v3', 6, 'eb06d4abfb49dc3eeb1aeb98ae0f581e')
 except Exception as e:
     bot_client = None
     print(f"Error init bot: {e}")
 
+# Global Memory Storage (The Trick)
+# We store the long text here and just pass a small key to the bot
+MESSAGE_STORE = {}
+
+def generate_key():
+    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+
 # ==========================================
-# 1. .realbtn - MULTIPLE BUTTONS SUPPORT
+# 1. .realbtn - HEAVY DUTY VERSION
 # ==========================================
 @events.register(events.NewMessage(pattern=r"\.realbtn", outgoing=True))
 async def real_button_command(event):
-    """Sends a message with MULTIPLE Inline Keyboard buttons."""
+    """Sends a message with MULTIPLE Inline Keyboard buttons (Unlimited Text Size)."""
     
-    # 1. Check Configuration
+    # 1. Config Check
     if HELPER_BOT_TOKEN == "PASTE_YOUR_BOT_TOKEN_HERE":
-        return await event.edit("❌ **Error:** Edit `useful_tools.py` and add your `HELPER_BOT_TOKEN`.")
+        return await event.edit("❌ **Error:** Add your `HELPER_BOT_TOKEN` in the plugin file.")
 
-    # 2. Check Connection
+    # 2. Connection Check
     if bot_client is None or not bot_client.is_connected():
-        await event.edit("⚠️ Helper Bot is disconnected. Attempting to reconnect...")
+        await event.edit("⚠️ Helper Bot connecting...")
         try:
             await bot_client.connect()
         except:
-            return await event.edit("❌ **Error:** Helper Bot cannot connect. Check your Token.")
+            return await event.edit("❌ **Error:** Helper Bot cannot connect. Check Token.")
 
     # 3. Parse Inputs
-    # Syntax: .realbtn Message Text | Name:Link | Name:Link
+    # Syntax: .realbtn Message | Name:Link | Name:Link
     raw_args = event.text.split(" ", 1)
     if len(raw_args) < 2:
         return await event.edit("❌ **Usage:** `.realbtn Text | Name:Link | Name:Link`")
@@ -49,13 +56,26 @@ async def real_button_command(event):
 
     msg_text = parts[0].strip()
     
-    # Pack the buttons into the query string
-    # We use '||' to separate buttons in the hidden query
-    btn_data_list = []
+    # 4. Process Buttons
+    buttons_list = []
     for btn_part in parts[1:]:
-        btn_data_list.append(btn_part.strip())
+        if ":" in btn_part:
+            name, link = btn_part.split(":", 1)
+            # Create a Button Object here to store in memory
+            buttons_list.append(Button.url(name.strip(), link.strip()))
     
-    btn_query_str = "||".join(btn_data_list)
+    if not buttons_list:
+        return await event.edit("❌ **Error:** No valid buttons found. Use `Name:Link` format.")
+
+    # 5. THE MEMORY TRICK
+    # Instead of sending text, we generate a key
+    unique_key = generate_key()
+    
+    # Save the huge text and buttons in our global dictionary
+    MESSAGE_STORE[unique_key] = {
+        'text': msg_text,
+        'buttons': [buttons_list] # Double list for rows
+    }
 
     # Get Bot Username
     try:
@@ -65,53 +85,47 @@ async def real_button_command(event):
 
     await event.delete()
 
-    # 4. Send Query
-    # Query format: "multi|Message|Btn1:Link||Btn2:Link"
-    full_query = f"multi|{msg_text}|{btn_query_str}"
+    # 6. Send Tiny Query
+    # We only send "fetch|key", which is super short!
+    query_text = f"fetch|{unique_key}"
     
     try:
-        results = await event.client.inline_query(bot_me.username, full_query)
+        # Ask helper bot to fetch the message by key
+        results = await event.client.inline_query(bot_me.username, query_text)
         await results[0].click(event.chat_id)
     except TimeoutError:
-        await event.respond("❌ **Timeout:** Telegram API is slow or Bot is sleeping. Try again.")
+        await event.respond("❌ **Timeout:** Telegram API slow. Try again.")
+    except IndexError:
+        await event.respond("❌ **Error:** Bot didn't return a result. Is Inline Mode on?")
     except Exception as e:
         await event.respond(f"❌ **Error:** {e}")
 
 
-# --- Helper Bot Logic (Handles the Query) ---
+# --- Helper Bot Logic (Fetches from Memory) ---
 @bot_client.on(events.InlineQuery)
 async def inline_handler(event):
     query = event.text
     builder = event.builder
 
-    if query.startswith("multi|"):
+    if query.startswith("fetch|"):
         try:
-            # 1. Split the main parts
-            # "multi|Message|Btn1:Link||Btn2:Link"
-            main_parts = query.split("|", 2) 
-            text_content = main_parts[1]
-            buttons_raw = main_parts[2]
-
-            # 2. Process Buttons
-            # Split by '||' to get individual buttons
-            individual_btns = buttons_raw.split("||")
+            # 1. Get the key
+            _, key = query.split("|")
             
-            row = []
-            for item in individual_btns:
-                # Split by ':' to get Name and Link
-                if ":" in item:
-                    name, link = item.split(":", 1)
-                    row.append(Button.url(name.strip(), link.strip()))
-            
-            # 3. Create Result
-            # We put 'row' inside another list [] to make them side-by-side
-            # If you want them stacked (one per line), change [row] to [[b] for b in row]
-            result = builder.article(
-                title="Send Buttons",
-                text=text_content,
-                buttons=[row] 
-            )
-            await event.answer([result])
+            # 2. Retrieve data from Global Memory
+            if key in MESSAGE_STORE:
+                data = MESSAGE_STORE[key]
+                
+                result = builder.article(
+                    title="Send Big Message",
+                    text=data['text'],
+                    buttons=data['buttons'],
+                    link_preview=True 
+                )
+                await event.answer([result])
+            else:
+                # Key not found (expired or restart)
+                pass
         except Exception as e:
             print(f"Inline Error: {e}")
 
