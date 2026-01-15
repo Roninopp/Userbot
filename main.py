@@ -2,6 +2,7 @@ import os
 import importlib
 import logging
 import sys
+import asyncio
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 
@@ -9,22 +10,28 @@ from telethon.sessions import StringSession
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# --- CONFIGURATION (HARDCODED) ---
+# --- CONFIGURATION ---
+# PASTE YOUR DATA HERE DIRECTLY
+# Replace 123456 with your integer App ID
+# Replace "YOUR_HASH" and "YOUR_SESSION" with your actual strings (keep the quotes!)
 
-# 1. PASTE YOUR API_ID HERE (It must be an Integer, no quotes usually)
-API_ID = 21502134  
-
-# 2. PASTE YOUR API_HASH HERE (Keep the quotes)
-API_HASH = "e09a3f453b841ca4d1823d3b4004672d"
-
-# 3. PASTE YOUR STRING_SESSION HERE (Keep the quotes)
-STRING_SESSION = "1BVtsOIUBu1hzkoj6vU8vylkocPQvllfTwSy6davvVEL-BdRoEF856DoCawWgF-drPu-v4PI_lVxB_v4BaCB5-Xo5-cu5BEGlRuBpM4D6gmKpgqsVuw7kOS2UP9wqJEtZzCdaT0Sa5ITHPe6xzhK1UoYy7zCNnaZVuYu1BgMfaMxHzwP6M0CeC_xkcwpW8Cgm0OTpXNoZaNNeD_EnRr6dMxMiPTb36_80iwza7bhNrzdKciVR14ameJiybHMdbCWZ5AiKBBGKlEQHEAIe_qx-qiJAwPJjzwsrThkrOsUV0DlFTymAJpcR5X9Os0t1L7IOzRyohVnsv-7FVkR5sVqDjhZggnGrWjY="
+API_ID = 123456  
+API_HASH = "YOUR_API_HASH_HERE"
+STRING_SESSION = "YOUR_LONG_STRING_SESSION_HERE"
 
 # --- SAFETY CHECK ---
-# We check if you actually filled them in. If not, we log an error and stop safely instead of crashing.
-if API_ID == 1234567 or API_HASH == "paste_your_api_hash_here_inside_quotes":
-    logger.critical("STOPPING: You did not replace the placeholder API_ID or API_HASH in main.py!")
-    sys.exit(1)
+# This ensures you actually replaced the values above.
+# We check against the placeholders to see if you edited them.
+if API_ID == 123456 or API_HASH == "YOUR_API_HASH_HERE" or STRING_SESSION == "YOUR_LONG_STRING_SESSION_HERE":
+    # If using Environment Variables (Heroku Config Vars) instead, we try to load them here:
+    API_ID = os.environ.get("TELEGRAM_API_ID") or API_ID
+    API_HASH = os.environ.get("TELEGRAM_API_HASH") or API_HASH
+    STRING_SESSION = os.environ.get("STRING_SESSION") or STRING_SESSION
+
+    # If STILL generic, we stop safely.
+    if str(API_ID) == "123456" or API_HASH == "YOUR_API_HASH_HERE":
+        logger.critical("STOPPING: Please paste your API_ID, API_HASH, and STRING_SESSION in main.py!")
+        sys.exit(1)
 
 # This dictionary will hold help messages for loaded plugins
 PLUGINS = {}
@@ -44,9 +51,11 @@ def load_plugins():
 
     for f in os.listdir(PLUGIN_PATH):
         if f.endswith(".py") and f != "__init__.py":
-            plugin_name = f[:-3]
+            plugin_name = f[:-3]  # Remove '.py'
             try:
                 module = importlib.import_module(plugin_name)
+                
+                # Check for the 'register' function and call it
                 if hasattr(module, 'register'):
                     module.register(client, PLUGINS)
                     logger.info(f"Successfully loaded plugin: {plugin_name}")
@@ -64,6 +73,7 @@ except Exception as e:
 
 @client.on(events.NewMessage(pattern=r'\.help', outgoing=True))
 async def help_handler(event):
+    """Handler for the .help command."""
     if not PLUGINS:
         await event.edit("No plugins loaded.")
         return
@@ -75,16 +85,21 @@ async def help_handler(event):
     await event.edit(help_text)
 
 async def main():
+    """Main function to start the bot."""
     logger.info("Starting userbot...")
     await client.start()
     
-    load_plugins()
+    load_plugins() 
     
     me = await client.get_me()
     logger.info(f"Userbot started successfully as {me.first_name} (@{me.username})!")
-    logger.info("Send .help in any chat to see available commands.")
+    logger.info("Send .help in any chat (that you can type in) to see available commands.")
     
     await client.run_until_disconnected()
 
 if __name__ == "__main__":
-    client.loop.run_until_complete(main())
+    # FIX FOR HEROKU/PYTHON 3.10+
+    # Explicitly create a new event loop
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(main())
