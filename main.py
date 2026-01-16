@@ -2,7 +2,7 @@ import os
 import importlib
 import logging
 import sys
-import asyncio  # <--- Imported here
+import asyncio
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 
@@ -16,22 +16,12 @@ loop = asyncio.new_event_loop()
 asyncio.set_event_loop(loop)
 # -------------------------------------
 
-# --- CONFIGURATION ---
-# PASTE YOUR DATA HERE DIRECTLY
-API_ID = 21502134  
+# --- CONFIGURATION (YOUR CREDENTIALS) ---
+API_ID = 21502134
 API_HASH = "e09a3f453b841ca4d1823d3b4004672d"
-STRING_SESSION = "1BVtsOIUBu1hzkoj6vU8vylkocPQvllfTwSy6davvVEL-BdRoEF856DoCawWgF-drPu-v4PI_lVxB_v4BaCB5-Xo5-cu5BEGlRuBpM4D6gmKpgqsVuw7kOS2UP9wqJEtZzCdaT0Sa5ITHPe6xzhK1UoYy7zCNnaZVuYu1BgMfaMxHzwP6M0CeC_xkcwpW8Cgm0OTpXNoZaNNeD_EnRr6dMxMiPTb36_80iwza7bhNrzdKciVR14ameJiybHMdbCWZ5AiKBBGKlEQHEAIe_qx-qiJAwPJjzwsrThkrOsUV0DlFTymAJpcR5X9Os0t1L7IOzRyohVnsv-7FVkR5sVqDjhZggnGrWjY="
 
-# --- SAFETY CHECK ---
-if str(API_ID) == "123456" or API_HASH == "YOUR_API_HASH_HERE":
-    # Try loading from Environment Variables if hardcoded values are defaults
-    API_ID = os.environ.get("TELEGRAM_API_ID") or API_ID
-    API_HASH = os.environ.get("TELEGRAM_API_HASH") or API_HASH
-    STRING_SESSION = os.environ.get("STRING_SESSION") or STRING_SESSION
-
-    if str(API_ID) == "123456" or API_HASH == "YOUR_API_HASH_HERE":
-        logger.critical("STOPPING: Please paste your API_ID, API_HASH, and STRING_SESSION in main.py!")
-        sys.exit(1)
+# I added .strip() to ensure no invisible spaces cause errors
+STRING_SESSION = "1BVtsOIUBu1hzkoj6vU8vylkocPQvllfTwSy6davvVEL-BdRoEF856DoCawWgF-drPu-v4PI_lVxB_v4BaCB5-Xo5-cu5BEGlRuBpM4D6gmKpgqsVuw7kOS2UP9wqJEtZzCdaT0Sa5ITHPe6xzhK1UoYy7zCNnaZVuYu1BgMfaMxHzwP6M0CeC_xkcwpW8Cgm0OTpXNoZaNNeD_EnRr6dMxMiPTb36_80iwza7bhNrzdKciVR14ameJiybHMdbCWZ5AiKBBGKlEQHEAIe_qx-qiJAwPJjzwsrThkrOsUV0DlFTymAJpcR5X9Os0t1L7IOzRyohVnsv-7FVkR5sVqDjhZggnGrWjY=".strip()
 
 # This dictionary will hold help messages for loaded plugins
 PLUGINS = {}
@@ -62,10 +52,10 @@ def load_plugins():
 
 # --- INITIALIZE CLIENT ---
 try:
-    # WE PASS 'loop=loop' HERE TO FIX THE ERROR
+    # We pass 'loop=loop' to fix the Runtime error
     client = TelegramClient(
         StringSession(STRING_SESSION), 
-        int(API_ID), 
+        API_ID, 
         API_HASH,
         loop=loop
     )
@@ -87,8 +77,14 @@ async def help_handler(event):
 
 async def main():
     logger.info("Starting userbot...")
-    await client.start()
     
+    # We use await client.connect() instead of start() to avoid the interactive prompt
+    await client.connect()
+    
+    if not await client.is_user_authorized():
+        logger.critical("CRITICAL ERROR: String Session is invalid or expired. Please generate a new one.")
+        return
+
     load_plugins() 
     
     me = await client.get_me()
